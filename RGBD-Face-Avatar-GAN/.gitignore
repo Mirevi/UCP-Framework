@@ -1,0 +1,16 @@
+/venv/
+/Data/*
+!/Dataset/RGBDFaceDataset.py
+
+
+/Dataset/RGB/*
+!/Dataset/RGB/README.md
+/Dataset/Depth/*
+!/Dataset/Depth/README.md
+/Dataset/Visualization/*
+!/Dataset/Visualization/README.md
+/Dataset/LandmarkControl.csv
+/Dataset/Landmarks.txt
+
+/Utils/TestImage.png
+/Utils/Testvideo.mp4
