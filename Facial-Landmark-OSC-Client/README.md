@@ -2,6 +2,10 @@
 
 ![alt text](Images/facial_landmarks.png "Facial Landmarks Example")
 
+The Facial-Landmark-OSC-Client detect facial landmarks from different input streams and merges the landmarks to a face 
+representation. The whole face consists of 70 landmarks and is sent via OSC to an apllication with the ,,traced 
+generator" from the RGBD-Face-Avatar-GAN.
+
 ## Requirements
 1. `pip install -r requirements.txt`
 2. Install [PyTorch](https://pytorch.org/get-started/locally/)
@@ -12,7 +16,9 @@
 ![alt text](Images/control.png "Facial Landmarks Example")
 
 ## Facial Landmark Controller
-The Facial Landmark Controller offers the possibility to apply the relative input movement to an facial landmark set from the dataset. This improves the result if the avatar of one person is controlled by another person or the landmarks come from different sources and have to be merged.
+The Facial Landmark Controller offers the possibility to apply the relative input movement to an facial landmark set 
+from the dataset. This improves the result if the avatar of one person is controlled by another person or the landmarks 
+come from different sources and have to be merged.
 
 
 **How to use the Facial Landmark Controller:**
