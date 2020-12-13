@@ -11,7 +11,7 @@ The UCP-Framework consists of the following four parts:
 - [RGBD-Face-Avatar-GAN](RGBD-Face-Avatar-GAN)
 - [Facial-Landmark-OSC-Client](Facial-Landmark-OSC-Client)
 - MouthCNN
-- ClayMore oder MotionHub?
+- ClayMore oder MotionHub
 
 ## Overview:
 
