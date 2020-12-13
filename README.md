@@ -26,7 +26,7 @@ by facial landmarks.
 ## Facial-Landmark-OSC-Client
 
 # Citation
-
+```
 @misc{ladwig2020unmasking,
       title={Unmasking Communication Partners: A Low-Cost AI Solution for Digitally Removing Head-Mounted Displays in VR-Based Telepresence}, 
       author={Philipp Ladwig and Alexander Pech and Ralf Dörner and Christian Geiger},
@@ -35,4 +35,6 @@ by facial landmarks.
       archivePrefix={arXiv},
       primaryClass={cs.GR}
 }
+```
+
 
