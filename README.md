@@ -12,14 +12,13 @@ The UCP-Framework consists of the following parts:
 - [Facial-Landmark-OSC-Client](Facial-Landmark-OSC-Client)
 - [Lower-Face-CNN](Lower-Face-CNN)
 - [MireviMotionHub](https://github.com/Mirevi/MotionHub)
-- [ClayMore Engine] (https://github.com/Mirevi/ClayMore)
+- [ClayMore-Engine] (https://github.com/Mirevi/ClayMore)
 
 ## Overview:
 
 ### [RGBD-Face-Avatar-GAN](RGBD-Face-Avatar-GAN)
 
-The combination of Pix2Pix-GAN and RGBD-Images abels to generate personal face-avatars witch can be controlled 
-by facial landmarks.
+This GAN is based on the Pix2Pix-GAN and extended with a additional channel for processing RGBD images. It allows the generation of three-dimensional face avatars which can be controlled by facial landmarks.
 
 ![alt text](RGBD-Face-Avatar-GAN/Images/Overview.png)
 
