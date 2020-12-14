@@ -11,6 +11,8 @@ The UCP-Framework consists of the following parts:
 - [RGBD-Face-Avatar-GAN](RGBD-Face-Avatar-GAN)
 - [Facial-Landmark-OSC-Client](Facial-Landmark-OSC-Client)
 - [Lower-Face-CNN](Lower-Face-CNN)
+- [MireviMotionHub](https://github.com/Mirevi/MotionHub)
+- [ClayMore Engine] (https://github.com/Mirevi/ClayMore)
 
 ## Overview:
 
@@ -30,6 +32,12 @@ generator" from the RGBD-Face-Avatar-GAN.
 ### [Lower-Face-CNN](Lower-Face-CNN)
 
 The Lower-Face-CNN enables the detection of facial landmarks **only** at the lower face.
+
+### [MireviMotionHub](https://github.com/Mirevi/MotionHub)
+The MotionHub supports in the branch "GANExport" a window (Menu->GAN Capture) for recording the face with a Microsoft Azure Kinect. This way, a data set can be acquired and later be processed by the RGBD-Face-Avatar-GAN. In future releases of the MotionHub, a convienient installer will be provided with the GANCapture feature. 
+
+### [ClayMore Engine] (https://github.com/Mirevi/ClayMore)
+This is the engine which executes the trained generator module and enables the basics for a potential real time telepresence system with three dimensional faces. Please send a request to Philipp Ladwig for access to the source code (see paper for address). We are currently maintaining the source and we are planning to release a open source version soon.
 
 ![alt text](Lower-Face-CNN/Images/CNN.png)
 
