@@ -12,7 +12,7 @@ The UCP-Framework consists of the following parts:
 - [Facial-Landmark-OSC-Client](Facial-Landmark-OSC-Client)
 - [Lower-Face-CNN](Lower-Face-CNN)
 - [MireviMotionHub](https://github.com/Mirevi/MotionHub)
-- [ClayMore-Engine] (https://github.com/Mirevi/ClayMore)
+- [ClayMore-Engine](https://github.com/Mirevi/ClayMore)
 
 ## Overview:
 
