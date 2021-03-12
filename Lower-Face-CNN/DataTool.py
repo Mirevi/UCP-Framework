@@ -7,8 +7,16 @@ import Utils.Camera as cam
 import numpy as np
 import pandas as pd
 
-PATH2VID = "Jannik1-MouthCNN-6min-TraningData.mp4"
-ROTATE = True
+PATH2VID = "data/Jannik-28-10-20/Jannik-28-10-20.mp4"
+ROTATE = False
+SHOWFRAMES = True
+scaleBoundingBox = 1.1
+
+#subtract videoname from path and set it as dirname for further processing
+dirname = PATH2VID[::-1]
+notUsed, notUsed1, dirname = dirname.partition("/")
+dirname = dirname[::-1]
+dirname = dirname + "/"
 
 class CSVGenerator:
     def __init__(self):
@@ -45,29 +53,22 @@ class CSVGenerator:
 
 
 def show(img, landmarks):
-
     for i in landmarks[0]:
         cv2.circle(img, (int(i[0]), int(i[1])), 3, (255, 0, 0))
     cv2.imshow('frame', img)
     cv2.waitKey(1)
-
     return img
 
-
 if __name__ == "__main__":
-
-    print("Analyse (1) or Crop (2):")
-    action = int(input('Enter action:'))
-
-    if action == 1:
+    #if action == 1:
+        # Select a camera type. Caddx EOS 2 is "Weitwinkel"
         cam = cam.Camera("Weitwinkel")
-
-        # Outputfolder erstellen
-        dirname = 'output'
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
+        # Create output dir and if files in it, delete them
+        dirnameOutput = dirname + "output"
+        if not os.path.exists(dirnameOutput):
+            os.mkdir(dirnameOutput)
         else:
-            files = glob.glob(dirname + '/*')
+            files = glob.glob(dirnameOutput + '/*')
             for f in files:
                 os.remove(f)
 
@@ -75,62 +76,85 @@ if __name__ == "__main__":
         fa_v = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device='cuda:0', flip_input=True)
         vidcap = cv2.VideoCapture(PATH2VID, 0)
         frame_list = []
+        allFacialLandmarks = []
         while (vidcap.isOpened()):
             hasFrames, image = vidcap.read()
-            if hasFrames:  # Auf jeden Frame FAN anwenden
+            if hasFrames:  # Lets FAN detect landmarks on each frame
                 image = cam(image)
+                # Contrast adjustment (test for better landmarks results)
+                # alpha = 0.5  # Contrast control (1.0-3.0)
+                # beta = 0  # Brightness control (0-100)
+                # image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
                 if ROTATE:
                     image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                preds = fa_v.get_landmarks(image)
+                preds = fa_v.get_landmarks_from_image(image)
+                # better use get_landmarks_from_image() because get_landmarks is deprecated -> Todo: Test
+                allFacialLandmarks.append(preds)
                 if preds == None:
                     continue
 
                 id = uuid.uuid4()
-                cv2.imwrite(os.path.join(dirname, str(id) + ".png"), image)  # Frame speichern
+                cv2.imwrite(os.path.join(dirnameOutput + "/", str(id) + ".png"), image) # Frame speichern
                 csv.add_data(id, preds)
-                frame = show(image, preds)
+                if SHOWFRAMES:
+                    frame = show(image, preds)
             else:
                 break
 
         vidcap.release()
-        csv.export("landmark.csv")
+        csv.export(dirname + "landmark.csv")
 
-    elif action == 2:
+        # Calc mouth bounding box
+        # For better debug prints
+        # np.set_printoptions(threshold=sys.maxsize) # import sys if uncomment
+        # convert in np.array
+        allFacialLandmarks = np.array(allFacialLandmarks)
+        # reduce dimensionaliyt from w, x, y, z to w, y, z (FAN creates a weired array)
+        allFacialLandmarks = allFacialLandmarks[:, -1]
+        # take only the relevant lower face landmarks
+        onlyLowerFaceLandmarks = np.concatenate([allFacialLandmarks[:, 3:13], allFacialLandmarks[:, 31:35]], 1)
+        onlyLowerFaceLandmarks = np.concatenate([onlyLowerFaceLandmarks , allFacialLandmarks[:, 48:67]], 1)
+        # Min and max for bounding box
+        landmarksMinX = onlyLowerFaceLandmarks[:, :, 0:1].min()
+        landmarksMaxX = onlyLowerFaceLandmarks[:, :, 0:1].max()
+        landmarksMinY = onlyLowerFaceLandmarks[:, :, 1:].min()
+        landmarksMaxY = onlyLowerFaceLandmarks[:, :, 1:].max()
 
-        # lies pngs und speicher in Array
-        images = glob.glob("output/*.png")
+    #elif action == 2:
+        # read and save array TODO: Could be avoided, since we run the process in one run, instead of adjusting manually the bounding box
+        images = glob.glob(dirname + 'output/' +  '*.png')
 
-        # Variablen Höhe / Weite / Y-Achsen Anfang
-        width = [80, 80 + 300]  # [220, 220+360] #crop nichts von rechts oder links (fullsize)
-        height = [340, 340 + 220]  # crop von 400 bis Bildende
+        # Lower face bounding box
+        width = [int(landmarksMinX - ((landmarksMinX * scaleBoundingBox) - landmarksMinX)), int(landmarksMaxX * scaleBoundingBox)]  # [220, 220+360] #crop nichts von rechts oder links (fullsize)
+        height = [int(landmarksMinY - ((landmarksMinY * scaleBoundingBox) - landmarksMinY)), int(landmarksMaxY * scaleBoundingBox)]  # crop von 400 bis Bildende
 
-        # Outputordner erstellen
-        dirname = 'cropped'
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
+        # Create output dir and if files in it, delete them
+        dirnameCropped = dirname + 'cropped'
+        if not os.path.exists(dirnameCropped):
+            os.mkdir(dirnameCropped)
         else:
-            files = glob.glob(dirname + '/*')
+            files = glob.glob(dirnameCropped + '/*')
             for f in files:
                 os.remove(f)
 
+        # load old landmarks and append new only lower face landmarks
         csv = CSVGenerator()
-        data = csv.read_csv("landmark.csv")
-        # X-Korrigieren
+        data = csv.read_csv(dirname + "landmark.csv")
+        # Corrects x coordinates
         data[:, 1::2] = data[:, 1::2].astype(float) - width[0]
-        # Y-Korrogieren
+        # Corrects y coordinates
         data[:, 2::2] = data[:, 2::2].astype(float) - height[0]
-
         for i in range(data.shape[0]):
             csv.add_data(data[i, 0], data[i, 1:].reshape((1, 68, 2)))
-        csv.export("landmark_cropped.csv")
+        csv.export(dirname + "landmark_cropped.csv")
 
         frame_list = []
-        # crop speichern & neue landmarks in crop.cvs speichern
-        img_ids = [x for x in glob.glob("output/*.png")]
+        # save crops
+        img_ids = [x for x in glob.glob(dirname + "output/*.png")]
         for id in img_ids:
             image = cv2.imread(id, 1)  # gray=0, color=1, color_alpha= -1 #
             image = image[height[0]:height[1], width[0]:width[1]]
-            cv2.imwrite(os.path.join(dirname, os.path.basename(id)), image)  # in crop speichern
+            cv2.imwrite(os.path.join(dirnameCropped + "/", os.path.basename(id)), image)  # save cropped image
 
             i = int(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
             frame = show(image, data[i, 1:].reshape((1, 68, 2)).astype(float))

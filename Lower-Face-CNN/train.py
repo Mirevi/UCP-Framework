@@ -1,7 +1,7 @@
 import torch
 import Dataset as ds
 from tqdm import tqdm
-import CNN_PyTorch.Visualization as vis
+import Utils.Visualization as vis
 import torchsummary
 from torch.utils.tensorboard import SummaryWriter
 from NormalizedMeanError import NME
@@ -20,7 +20,7 @@ drop_list = [0]
 if __name__ == "__main__":
 
     # Dataset
-    completeDataset = ds.FaceLandmarkDataset("../Dataset/Jannik/")
+    completeDataset = ds.FaceLandmarkDataset("")
     #train_ds = completeDataset
     #val_ds = ds.FaceLandmarkDataset("../Dataset/Philipp3_1/")
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                         for i in range(batch["landmarks"].shape[0]):
                             truth = batch["landmarks"][i].detach().cpu().numpy().reshape(-1, 2)
                             pred = pred_landmarks[i].detach().cpu().numpy().reshape(-1, 2)
-                            running_nme.append(NME(truth, pred, printNME=False))
+                            running_nme.append(NME(truth, pred, printNME=True))
 
                     if lr_scheduler is not None:
                         lr_scheduler.step()
