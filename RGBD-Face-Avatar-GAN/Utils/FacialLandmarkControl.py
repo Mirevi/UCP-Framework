@@ -33,6 +33,8 @@ class FacialLandmarkController():
 
         self.canvas_2 = tk.Canvas(streamFrame, width=self.ImageSize, height=self.ImageSize)
         self.canvas_2.grid(row=1, column=3)
+        self.slider_2 = tk.Scale(streamFrame, from_=0, to=0, length=self.ImageSize, command=self._editCage)
+        self.slider_2.grid(row=1, column=4)
 
         noise = np.random.randint(255, size=(self.ImageSize, self.ImageSize))
         self.initial_tkImage = ImageTk.PhotoImage(Image.fromarray(noise))
@@ -75,36 +77,43 @@ class FacialLandmarkController():
 
         self.loadedLandmarks = np.loadtxt(name, dtype=float).reshape((-1, 2)) #'Dataset/Landmarks.txt'
 
-        self.loadedProfil = Image.new('RGB', (self.ImageSize, self.ImageSize), (0, 0, 0))
-        draw = ImageDraw.Draw(self.loadedProfil)
-        for i in range(self.loadedLandmarks.shape[0]):
-            x = self.loadedLandmarks[i][0]
-            y = self.loadedLandmarks[i][1]
-
-            if x > 3 and y > 3:
-                draw.ellipse([(x - 3, y - 3), (x + 3, y + 3)], fill=(55, 55, 55))
 
         self.loadedLandmarks = self.loadedLandmarks.reshape((-1, 70, 2))
         self.slider_1.config(to=self.loadedLandmarks.shape[0]-1)
         self.slider_1.set(0)
         self._slider(0)
 
+        self.slider_2.config(from_=1, to=13,)
+        self.slider_2.set(3)
+        self._editCage(3)
+
         self.matchButton.config(state="normal")
         self.checkbutton.config(state="normal")
 
-        self.regions = np.zeros((self.loadedLandmarks.shape[1], self.ImageSize, self.ImageSize), np.uint8)
-        kernel = np.ones((3, 3), np.uint8)
-        for i in range(self.loadedLandmarks.shape[1]):
-            for j in range(self.loadedLandmarks.shape[0]):
-                x = int(self.loadedLandmarks[j,i,0])
-                y = int(self.loadedLandmarks[j,i,1])
-                cv2.circle(self.regions[i], (x, y), 1, 255, -1)
-            self.regions[i] = cv2.dilate(self.regions[i], kernel, iterations=1)
-        self.updateCanvas(2)
 
     def _slider(self, value):
         self.neutralProfil2 = self.loadedLandmarks[int(value)]
         self.updateCanvas(1,hd.drawHeatmap(self.neutralProfil2, self.ImageSize)[:, :, 0:3])
+
+    def _editCage(self, kernel_size):
+
+        self.regions = np.zeros((self.loadedLandmarks.shape[1], self.ImageSize, self.ImageSize), np.uint8)
+        bg_map = np.zeros((self.ImageSize, self.ImageSize), np.uint8)
+        kernel = np.ones((int(kernel_size), int(kernel_size)), np.uint8)
+        for i in range(self.loadedLandmarks.shape[1]):
+            for j in range(self.loadedLandmarks.shape[0]):
+                x = int(self.loadedLandmarks[j, i, 0])
+                y = int(self.loadedLandmarks[j, i, 1])
+                cv2.circle(self.regions[i], (x, y), 1, 255, -1)
+            self.regions[i] = cv2.dilate(self.regions[i], kernel, iterations=1)
+            bg_map = cv2.add(bg_map, self.regions[i])
+
+        bg_map = bg_map / 5
+        bg_map = bg_map.astype('uint8')
+
+        self.loadedProfil = Image.fromarray(bg_map)
+        self.updateCanvas(2)
+
 
     def updateCanvas(self,canvas=0, img=0):
 

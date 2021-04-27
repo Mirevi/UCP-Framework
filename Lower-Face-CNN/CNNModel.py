@@ -75,7 +75,7 @@ class Net(nn.Module):
 
 if __name__ == "__main__":
 
-    t = torch.zeros([1, 1, int(160*0.95),int(256*0.95)], dtype=torch.float32).to("cpu")
+    t = torch.zeros([1, 1, int(260/1.5*0.9),int(340/1.5*0.9)], dtype=torch.float32).to("cpu")
 
-    model = Net(t, 0.1).to("cpu")
+    model = Net(t, 0.0).to("cpu")
     torchsummary.summary(model, t[0].shape, device="cpu")
