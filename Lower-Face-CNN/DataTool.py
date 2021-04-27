@@ -7,7 +7,7 @@ import Utils.Camera as cam
 import numpy as np
 import pandas as pd
 
-PATH2VID = "Jannik1-MouthCNN-6min-TraningData.mp4"
+PATH2VID = "Philipp-12-03-21-full-26sec.mp4"
 ROTATE = True
 
 class CSVGenerator:
@@ -45,12 +45,10 @@ class CSVGenerator:
 
 
 def show(img, landmarks):
-
     for i in landmarks[0]:
         cv2.circle(img, (int(i[0]), int(i[1])), 3, (255, 0, 0))
     cv2.imshow('frame', img)
     cv2.waitKey(1)
-
     return img
 
 
@@ -101,7 +99,7 @@ if __name__ == "__main__":
         images = glob.glob("output/*.png")
 
         # Variablen Höhe / Weite / Y-Achsen Anfang
-        width = [80, 80 + 300]  # [220, 220+360] #crop nichts von rechts oder links (fullsize)
+        width = [65, 65 + 300]  # [220, 220+360] #crop nichts von rechts oder links (fullsize)
         height = [340, 340 + 220]  # crop von 400 bis Bildende
 
         # Outputordner erstellen
