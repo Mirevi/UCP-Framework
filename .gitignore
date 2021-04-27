@@ -1,2 +1,7 @@
-/Lower-Face-CNN/*.png
+/Lower-Face-CNN/**/*.png
+/Lower-Face-CNN/**/*.jpg
+/Lower-Face-CNN/**/*.jpeg
+/Lower-Face-CNN/**/*.mp4
+/Lower-Face-CNN/data
+/Lower-Face-CNN/venv
 !/Lower-Face-CNN/Images/*.png
