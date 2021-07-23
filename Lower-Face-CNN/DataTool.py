@@ -7,8 +7,8 @@ import Utils.Camera as cam
 import numpy as np
 import pandas as pd
 
-PATH2VID = "data/Jannik-28-10-20/Jannik-28-10-20.mp4"
-ROTATE = False
+PATH2VID = "data/Eva-07-03-21/_eva_shortened_to_10sec.mp4"
+ROTATE = True
 SHOWFRAMES = True
 scaleBoundingBox = 1.1
 
@@ -61,6 +61,7 @@ def show(img, landmarks):
 
 if __name__ == "__main__":
     #if action == 1:
+        print("DataTool.py started")
         # Select a camera type. Caddx EOS 2 is "Weitwinkel"
         cam = cam.Camera("Weitwinkel")
         # Create output dir and if files in it, delete them
@@ -77,6 +78,7 @@ if __name__ == "__main__":
         vidcap = cv2.VideoCapture(PATH2VID, 0)
         frame_list = []
         allFacialLandmarks = []
+        print("Start facial landmark detection")
         while (vidcap.isOpened()):
             hasFrames, image = vidcap.read()
             if hasFrames:  # Lets FAN detect landmarks on each frame
@@ -88,6 +90,14 @@ if __name__ == "__main__":
                 if ROTATE:
                     image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
                 preds = fa_v.get_landmarks_from_image(image)
+                sizeOfPreds = len(preds)
+                if sizeOfPreds == 2:
+                    print("sizeOfPreds is 2 - while continue") # sometimes len(preds) is 2 and it crashes the further processing, since
+                    # the array is not uniform anymore
+                    continue
+                if preds==None:
+                    print("preds is None - while continue") #stops this loop iteration with continue, because there are no faces found
+                    continue
                 # better use get_landmarks_from_image() because get_landmarks is deprecated -> Todo: Test
                 allFacialLandmarks.append(preds)
                 if preds == None:
@@ -104,6 +114,7 @@ if __name__ == "__main__":
         vidcap.release()
         csv.export(dirname + "landmark.csv")
 
+        print("Start automatic bounding box calculation")
         # Calc mouth bounding box
         # For better debug prints
         # np.set_printoptions(threshold=sys.maxsize) # import sys if uncomment
@@ -158,3 +169,5 @@ if __name__ == "__main__":
 
             i = int(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
             frame = show(image, data[i, 1:].reshape((1, 68, 2)).astype(float))
+
+        print("Successful processing. Have a look at the results in the directory " + PATH2VID)
