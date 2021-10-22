@@ -7,10 +7,12 @@ import Utils.Camera as cam
 import numpy as np
 import pandas as pd
 
-PATH2VID = "data/Eva-07-03-21/_eva_shortened_to_10sec.mp4"
+# PATH2VID = "data/Eva-07-03-21/_eva_shortened_to_10sec.mp4"
+PATH2VID = "data/Mirco-16-10-21/WIN_20211016_20_31_04_Pro.mp4"
+
 ROTATE = True
 SHOWFRAMES = True
-scaleBoundingBox = 1.1
+scaleBoundingBox = 1.1 # e.g.: the cropping bounding box is 10% bigger (with a value of 1.1) than the bounding box that spans the min and max values of the landmarks
 
 #subtract videoname from path and set it as dirname for further processing
 dirname = PATH2VID[::-1]
@@ -100,11 +102,13 @@ if __name__ == "__main__":
                     continue
                 # better use get_landmarks_from_image() because get_landmarks is deprecated -> Todo: Test
                 allFacialLandmarks.append(preds)
+
+                # todo: remove??
                 if preds == None:
                     continue
 
                 id = uuid.uuid4()
-                cv2.imwrite(os.path.join(dirnameOutput + "/", str(id) + ".png"), image) # Frame speichern
+                cv2.imwrite(os.path.join(dirnameOutput + "/", str(id) + ".png"), image) # save frame with unique id as png image
                 csv.add_data(id, preds)
                 if SHOWFRAMES:
                     frame = show(image, preds)
@@ -136,8 +140,8 @@ if __name__ == "__main__":
         images = glob.glob(dirname + 'output/' +  '*.png')
 
         # Lower face bounding box
-        width = [int(landmarksMinX - ((landmarksMinX * scaleBoundingBox) - landmarksMinX)), int(landmarksMaxX * scaleBoundingBox)]  # [220, 220+360] #crop nichts von rechts oder links (fullsize)
-        height = [int(landmarksMinY - ((landmarksMinY * scaleBoundingBox) - landmarksMinY)), int(landmarksMaxY * scaleBoundingBox)]  # crop von 400 bis Bildende
+        width = [int(landmarksMinX - ((landmarksMinX * scaleBoundingBox) - landmarksMinX)), int(landmarksMaxX * scaleBoundingBox)]
+        height = [int(landmarksMinY - ((landmarksMinY * scaleBoundingBox) - landmarksMinY)), int(landmarksMaxY * scaleBoundingBox)]
 
         # Create output dir and if files in it, delete them
         dirnameCropped = dirname + 'cropped'
@@ -151,20 +155,23 @@ if __name__ == "__main__":
         # load old landmarks and append new only lower face landmarks
         csv = CSVGenerator()
         data = csv.read_csv(dirname + "landmark.csv")
-        # Corrects x coordinates
+        # Corrects x coordinates based on the calculated bounding box above
         data[:, 1::2] = data[:, 1::2].astype(float) - width[0]
-        # Corrects y coordinates
+        # Corrects y coordinates based on the calculated bounding box above
         data[:, 2::2] = data[:, 2::2].astype(float) - height[0]
         for i in range(data.shape[0]):
             csv.add_data(data[i, 0], data[i, 1:].reshape((1, 68, 2)))
         csv.export(dirname + "landmark_cropped.csv")
 
+        # todo: for what we need frame_list?
         frame_list = []
         # save crops
         img_ids = [x for x in glob.glob(dirname + "output/*.png")]
         for id in img_ids:
             image = cv2.imread(id, 1)  # gray=0, color=1, color_alpha= -1 #
+            # Crop image based on the calculated bounding box above
             image = image[height[0]:height[1], width[0]:width[1]]
+            # Save cropped image
             cv2.imwrite(os.path.join(dirnameCropped + "/", os.path.basename(id)), image)  # save cropped image
 
             i = int(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
