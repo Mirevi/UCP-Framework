@@ -110,15 +110,14 @@ if __name__ == '__main__':
             loss_D = (loss_D_fake + loss_D_real) * 0.5
             loss_D.backward()
             optimizer_D.step()  # update D's weights
-
             ### Update Generator ###  similar to https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/pix2pix_model.py
 
             optimizer_G.zero_grad()  # set G's gradients to zero
             """Calculate GAN and L1 loss for the generator"""
             # First, G(A) should fake the discriminator
             fake_AB = torch.cat((heatmap, fakeRGBD), 1)
-            with torch.no_grad():
-                pred_fake = netD(fake_AB)
+            #with torch.no_grad():     # %TODO Bug: exclude D for loss computation
+            pred_fake = netD(fake_AB)
             loss_G_GAN = criterionGAN(pred_fake, True)
             # Second, G(A) = B
             loss_G_L1 = criterionL1(fakeRGBD, realRGBD) * lambda_L1
@@ -129,7 +128,6 @@ if __name__ == '__main__':
 
             epoch_loss_D.append(loss_D.item())
             epoch_loss_G.append(loss_G.item())
-
         tb.add_scalars("Loss", {'Discriminator': statistics.mean(epoch_loss_D),
                                 'Generator': statistics.mean(epoch_loss_G)}, epoch)
 
