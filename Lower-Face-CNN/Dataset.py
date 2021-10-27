@@ -19,7 +19,7 @@ class FaceLandmarkDataset(torch.utils.data.Dataset):
         dataframe = pd.read_csv(path2csv)
         self.data = dataframe.to_numpy()
 
-        height = int(260/1.5)#206#192#/2  #188/300*256#96 #225
+        height = int(260/1.5)# 260/1.5 ---> 173,33   206#192#/2  #188/300*256#96 #225
         width = int(340/1.5)#270#256#/2   #int(360/225*96)
 
         self.transform = transforms.Compose([t.Rescale((height, width)), #225 360
@@ -68,7 +68,7 @@ class FaceLandmarkDataset(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
 
-    completeDataset = FaceLandmarkDataset("../Dataset/Jannik")
+    completeDataset = FaceLandmarkDataset("C:/devel/UCP-Framework/Lower-Face-CNN/data/multiVids/")
     sample = completeDataset[0]
 
     vis.show(sample["image"], sample["landmarks"].reshape(-1), completeDataset.h, completeDataset.w)

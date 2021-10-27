@@ -33,7 +33,7 @@ drop_list = [0]
 
 if __name__ == "__main__":
     # Dataset
-    completeDataset = ds.FaceLandmarkDataset("")
+    completeDataset = ds.FaceLandmarkDataset("C:/devel/UCP-Framework/Lower-Face-CNN/data/multiVids/")
     #train_ds = completeDataset
     #val_ds = ds.FaceLandmarkDataset("../Dataset/Philipp3_1/")
 
@@ -62,10 +62,10 @@ if __name__ == "__main__":
                 lr_scheduler = None
                 #torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer) #None#torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
-                comment = f'_bs={batchsize}_lr={learningrate}_dr={dropoutrate}_Jannik'
+                comment = f'_bs={batchsize}_lr={learningrate}_dr={dropoutrate}_BESSERERNAME'
                 print(comment)
                 tb = SummaryWriter(comment=comment)
-                special_name = "_bs=" + str(batchsize) + "_lr=" + str(learningrate) + "_dr=" + str(dropoutrate) + "_Jannik"
+                special_name = "_bs=" + str(batchsize) + "_lr=" + str(learningrate) + "_dr=" + str(dropoutrate) + "_BESSERERNAME"
 
                 loss_hist = []
                 loss_hist_eval = []
