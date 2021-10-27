@@ -1,0 +1,11 @@
+# bitte pytorch & torchvision manuell installieren !! https://pytorch.org/get-started/locally/
+tensorboard
+matplotlib
+pillow
+numpy
+tqdm
+torchsummary
+opencv-python
+pandas
+face_alignment
+NormalizedMeanError
