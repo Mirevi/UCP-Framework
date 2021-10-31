@@ -6,6 +6,7 @@ import glob
 import Utils.Camera as cam
 import numpy as np
 import pandas as pd
+import sys
 
 # PATH2VID = "data/Eva-07-03-21/_eva_shortened_to_10sec.mp4"
 PATH2VID = "data/Mirco-16-10-21/WIN_20211016_20_31_04_Pro.mp4"
@@ -124,8 +125,6 @@ if __name__ == "__main__":
     for filename in vid_filenames:
         print("Processing " + filename)
         data = []
-
-
         vidcap = cv2.VideoCapture(filename, 0)
         while (vidcap.isOpened()):
             hasFrames, image = vidcap.read()
@@ -138,18 +137,7 @@ if __name__ == "__main__":
                 if ROTATE:
                     image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-                # predsWithMinus1 = fa_v.get_landmarks_from_image(image)[-1]
-                # print("type(predsWithMinus1): ")
-                # print(type(predsWithMinus1))
-                # print(predsWithMinus1)
-
                 preds = fa_v.get_landmarks_from_image(image)
-                # print("type(preds): ")
-                # print(type(preds))
-                # print(preds)
-                # print("len(preds)")
-                # print(len(preds)) #1
-                # if(preds):
 
                 #if no landsmarks were found skip this loop
                 if preds is None:
@@ -157,13 +145,11 @@ if __name__ == "__main__":
 
                 sizeOfPreds = len(preds)
                 if sizeOfPreds != 1:
-                    print("sizeOfPreds is not 1. It is: ")
+                    print("There were found more or less faces found in images. The number of faces is: ")
                     print(sizeOfPreds)
-                    print("...continue the while loop")# sometimes len(preds) is 2 and it crashes the further processing, since
-                    # the array is not uniform anymore. Found two or more faces?
                     continue
                 if preds == None:
-                    print("preds is None - while continue")  # stops this loop iteration with continue, because there are no faces found
+                    print("No faces found in this frame")  # stops this loop iteration with continue, because there are no faces found
                     continue
 
                 allFacialLandmarksAsList.append(preds)
@@ -200,34 +186,12 @@ if __name__ == "__main__":
         landmarksMinY = onlyLowerFaceLandmarks[:, :, 1:].min()
         landmarksMaxY = onlyLowerFaceLandmarks[:, :, 1:].max()
 
-        # j = 0
-        # while j < 10:
-        #     j += 1
-        #     onlyLowerFaceLandmarks[:, :, 0:1].min()
-        #     onlyLowerFaceLandmarks[:, :, 0:1].max()
-        #     onlyLowerFaceLandmarks[:, :, 1:].min()
-        #     onlyLowerFaceLandmarks[:, :, 1:].max()
-
         images = glob.glob(dirname + 'output/' + '*.png')
 
         # Lower face bb (bounding box)
         minMaxX = [int(landmarksMinX - ((landmarksMinX * scaleBoundingBox) - landmarksMinX)), int(landmarksMaxX * scaleBoundingBox)]
         minMaxY = [int(landmarksMinY - ((landmarksMinY * scaleBoundingBox) - landmarksMinY)), int(landmarksMaxY * scaleBoundingBox)]
 
-        #width = [int(landmarksMinX + boundingBoxPadding), int(landmarksMaxX - boundingBoxPadding)]
-        #height = [int(landmarksMinY + boundingBoxPadding), int(landmarksMaxY - boundingBoxPadding)]
-
-        # print("dsaad")
-        # print(landmarksMinX)
-        # print(landmarksMaxX)
-        # print(landmarksMinY)
-        # print(landmarksMaxY)
-        #
-        # print(width[0])
-        # print(width[1])
-        # print(height[0])
-        # print(height[1])
-        # 340 x 260
         bbWidth = minMaxX[1] - minMaxX[0]
         bbHeight = minMaxY[1] - minMaxY[0]
 
@@ -235,19 +199,11 @@ if __name__ == "__main__":
         bbWidthDiffToCorrectRatio = targetCroppedImageSizeWidth - bbWidth
         bbHeightDiffToCorrectRatio = targetCroppedImageSizeHeight - bbHeight
 
-        # print("bbHeightDiffToCorrectRatio: ")
-        # print(bbHeightDiffToCorrectRatio)
-        #
-        # print("bbHeightDiffToCorrectRatio % 2 == 1: ")
-        # print(bbHeightDiffToCorrectRatio % 2 == 1)
-
         if bbWidthDiffToCorrectRatio % 2 == 1:
                 bbWidthDiffToCorrectRatio += 1
 
         if bbHeightDiffToCorrectRatio % 2 == 1:
             bbHeightDiffToCorrectRatio += 1
-            # print("In if drin ")
-
 
         if minMaxX[0] % 2 == 1:
                 minMaxX[0] -= 1
@@ -261,30 +217,14 @@ if __name__ == "__main__":
         if minMaxY[1] % 2 == 1:
             minMaxY[1] -= 1
 
-
         minMaxX[0] -= int(bbWidthDiffToCorrectRatio / 2)
         minMaxY[0] -= int(bbHeightDiffToCorrectRatio / 2)
         minMaxX[1] += int(bbWidthDiffToCorrectRatio / 2)
         minMaxY[1] += int(bbHeightDiffToCorrectRatio / 2)
 
-
-        # print("4")
-        # print(minMaxX[0])
-        # print(minMaxY[0])
-        # print(minMaxX[1])
-        # print(minMaxY[1])
-        # print("bbWidthDiffToCorrectRatio etc")
-        # print(bbWidthDiffToCorrectRatio)
-        # print(bbHeightDiffToCorrectRatio)
-        # print(int(bbWidthDiffToCorrectRatio / 2))
-        # print(int(bbHeightDiffToCorrectRatio / 2))
-        # print("int(17/2): ")
-        # print(int(17/2))
-        # print(int((-17)/2))
-
-
-
         data = np.array(data)
+        # print("Here comes the data before: ")
+        # print(data)
         # Corrects x coordinates based on the calculated bounding box above
         data[:, 1::2] = data[:, 1::2].astype(float) - minMaxX[0] # x value
         # Corrects y coordinates based on the calculated bounding box above
@@ -292,26 +232,20 @@ if __name__ == "__main__":
         for i in range(data.shape[0]):
             csv.add_data(data[i, 0], data[i, 1:].reshape((1, 68, 2)))
 
+        i = 0
+        for id in data[:, 0]:
+            filePathOutput = dirnameOutput + "/" + id +  ".png"
+            image = cv2.imread(filePathOutput, 1)  # gray=0, color=1, color_alpha= -1 #
 
-
-        # save crops
-        img_ids = [x for x in glob.glob(dirname + "output/*.png")]
-        for id in img_ids:
-            image = cv2.imread(id, 1)  # gray=0, color=1, color_alpha= -1 #
             # Crop image based on the calculated bounding box above
             image = image[minMaxY[0]:minMaxY[1], minMaxX[0]:minMaxX[1]]
-            # Save cropped image
-            cv2.imwrite(os.path.join(dirnameCropped + "/", os.path.basename(id)), image)  # save cropped image
-            # if(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]).len() > 1):
-            #     print("Error: np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]).len() ist groesser als 1")
-            #     print(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
-            print("argwhere: ")
-            print(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
-            if np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]):
-                i = int(np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]))
-                frame = show(image, data[i, 1:].reshape((1, 68, 2)).astype(float))
-            else:
-                print("np.argwhere(data[:, 0] == os.path.basename(id)[0:-4]) was empty...")
 
+            # Save cropped image
+            filePathCropped = dirnameCropped + "/" + id +  ".png"
+            cv2.imwrite(filePathCropped, image)  # save cropped image
+
+            # Show image with landmarks
+            frame = show(image, data[i, 1:].reshape((1, 68, 2)).astype(float))
+            i += 1
     csv.export(dirname + "landmark_cropped.csv")
     print("Successful processing. Have a look at the results in the directory " + PATH2VIDS)
