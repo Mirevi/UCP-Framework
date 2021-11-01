@@ -94,10 +94,6 @@ if __name__ == "__main__":
     csv = CSVGenerator()
     fa_v = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device='cuda:0', flip_input=True)
 
-    # todo: do we use this anymore?
-    frame_list = []
-
-
     print("Start facial landmark detection")
     print("Processing Mode: Using multiple videos for training")
 
@@ -125,6 +121,7 @@ if __name__ == "__main__":
     for filename in vid_filenames:
         print("Processing " + filename)
         data = []
+        allFacialLandmarksAsList = []
         vidcap = cv2.VideoCapture(filename, 0)
         while (vidcap.isOpened()):
             hasFrames, image = vidcap.read()
