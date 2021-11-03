@@ -1,3 +1,4 @@
+import os
 import torch
 import Dataset as ds
 from tqdm import tqdm
@@ -9,20 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import statistics
 from CNNModel import Net
-
 import cv2
-def show_and_save_with_NME(nmw, img, truth_landmarks, pred_landmarks):
-    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    for i in truth_landmarks:
-        cv2.circle(img, (int(i[0] * 340 / 1.5 * 0.9), int(i[1] * 260 / 1.5 * 0.9)), 3, (0, 255, 0))
-    for i in pred_landmarks:
-        cv2.circle(img, (int(i[0] * 340 / 1.5 * 0.9), int(i[1] * 260 / 1.5 * 0.9)), 3, (0, 0, 255))
-
-    cv2.imwrite("paper/" + str(nmw) + ".jpg", img*255)
-    cv2.imshow('frame', img)
-    cv2.waitKey(1)
-
-    return img
 
 epochs = 15
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -31,11 +19,34 @@ bs_list = [8]
 lr_list = [0.001]
 drop_list = [0]
 
+SHOW_FRAMES = True
+WRITE_IMAGES_SORTED_BY_NME = False # if true SHOW_FRAMES must also be true
+
+def show_and_save_with_NME(nmw, img, truth_landmarks, pred_landmarks):
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+    for i in truth_landmarks:
+        cv2.circle(img, (int(i[0] * 340 / 1.5 * 0.9), int(i[1] * 260 / 1.5 * 0.9)), 3, (0, 255, 0))
+    for i in pred_landmarks:
+        cv2.circle(img, (int(i[0] * 340 / 1.5 * 0.9), int(i[1] * 260 / 1.5 * 0.9)), 3, (0, 0, 255))
+
+    if WRITE_IMAGES_SORTED_BY_NME:
+        cv2.imwrite("NME-Images-Sorted-By-NME/" + str(nmw) + ".jpg", img * 255)
+    cv2.imshow('frame', img)
+    cv2.waitKey(1)
+    return img
+
+
 if __name__ == "__main__":
     # Dataset
     completeDataset = ds.FaceLandmarkDataset("C:/devel/UCP-Framework/Lower-Face-CNN/data/multiVids/")
     #train_ds = completeDataset
     #val_ds = ds.FaceLandmarkDataset("../Dataset/Philipp3_1/")
+
+    # Create output dir for the trained models, if it doesn't exist yet
+    dirnameWeights = "Weights"
+    if not os.path.exists(dirnameWeights):
+        os.mkdir(dirnameWeights)
 
     len_complete = len(completeDataset)
     len_train = int(0.7 * len_complete)
@@ -45,7 +56,6 @@ if __name__ == "__main__":
     print("validation dataset lengh:", len(val_ds))
 
     for batchsize in bs_list:
-
         trainLoader = torch.utils.data.DataLoader(train_ds, batchsize, shuffle=True, num_workers=4)
         valLoader = torch.utils.data.DataLoader(val_ds, 1, shuffle=True, num_workers=4)
 
@@ -85,8 +95,8 @@ if __name__ == "__main__":
                         model.train()
 
                     for batch in dataloader:
-                        print("type(batch)")
-                        print(type(batch))
+                        # print("type(batch)")
+                        # print(type(batch))
                         pred_landmarks = model(batch["image"].to(device))
                         loss = lossFunction(pred_landmarks, batch["landmarks"].reshape(batch["landmarks"].shape[0], -1).to(device))
 
@@ -98,20 +108,21 @@ if __name__ == "__main__":
                         running_loss.append(loss.item())
                         for i in range(batch["landmarks"].shape[0]):
                             truth = batch["landmarks"][i].detach().cpu().numpy().reshape(-1, 2)
-                            print("truth.shape")
-                            print(truth.shape)
+                            # print("truth.shape")
+                            # print(truth.shape)
                             pred = pred_landmarks[i].detach().cpu().numpy().reshape(-1, 2)
-                            running_nme.append(NME(truth, pred, printNME=True))
+                            running_nme.append(NME(truth, pred, printNME=False))
 
-                            print("pred.shape")
-                            print(pred.shape)
+                            # print("pred.shape")
+                            # print(pred.shape)
                             nme = NME(truth, pred, printNME=False)
                             running_nme.append(nme)
-                            print("type(batch[image][i])")
-                            print(type(batch["image"][i].cpu()))
+                            # print("type(batch[image][i])")
+                            # print(type(batch["image"][i].cpu()))
 
-                            print(batch["image"].shape)
-                            show_and_save_with_NME(nme, batch["image"][i].cpu().numpy().reshape(155, 203, 1), truth, pred)
+                            # print(batch["image"].shape)
+                            if SHOW_FRAMES:
+                                show_and_save_with_NME(nme, batch["image"][i].cpu().numpy().reshape(155, 203, 1), truth, pred)
 
                     if lr_scheduler is not None:
                         lr_scheduler.step()

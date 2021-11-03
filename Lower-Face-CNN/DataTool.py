@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
                 id = uuid.uuid4()
                 cv2.imwrite(os.path.join(dirnameOutput + "/", str(id) + ".png"), image)  # save frame with unique id as png image
-                csv.add_data(id, preds)
+                #csv.add_data(id, preds)
 
                 row = np.concatenate((np.array([str(id)]), np.array(preds[0]).reshape(-1)), axis=0)
                 data.append(row)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         landmarksMinY = onlyLowerFaceLandmarks[:, :, 1:].min()
         landmarksMaxY = onlyLowerFaceLandmarks[:, :, 1:].max()
 
-        images = glob.glob(dirname + 'output/' + '*.png')
+        #images = glob.glob(dirname + 'output/' + '*.png')
 
         # Lower face bb (bounding box)
         minMaxX = [int(landmarksMinX - ((landmarksMinX * scaleBoundingBox) - landmarksMinX)), int(landmarksMaxX * scaleBoundingBox)]
@@ -192,7 +192,6 @@ if __name__ == "__main__":
         bbWidth = minMaxX[1] - minMaxX[0]
         bbHeight = minMaxY[1] - minMaxY[0]
 
-        # 340 ist "Soll"
         bbWidthDiffToCorrectRatio = targetCroppedImageSizeWidth - bbWidth
         bbHeightDiffToCorrectRatio = targetCroppedImageSizeHeight - bbHeight
 
@@ -229,7 +228,7 @@ if __name__ == "__main__":
         for i in range(data.shape[0]):
             csv.add_data(data[i, 0], data[i, 1:].reshape((1, 68, 2)))
 
-        i = 0
+        j = 0
         for id in data[:, 0]:
             filePathOutput = dirnameOutput + "/" + id +  ".png"
             image = cv2.imread(filePathOutput, 1)  # gray=0, color=1, color_alpha= -1 #
@@ -242,7 +241,7 @@ if __name__ == "__main__":
             cv2.imwrite(filePathCropped, image)  # save cropped image
 
             # Show image with landmarks
-            frame = show(image, data[i, 1:].reshape((1, 68, 2)).astype(float))
-            i += 1
+            frame = show(image, data[j, 1:].reshape((1, 68, 2)).astype(float))
+            j += 1
     csv.export(dirname + "landmark_cropped.csv")
     print("Successful processing. Have a look at the results in the directory " + PATH2VIDS)
