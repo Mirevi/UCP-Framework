@@ -92,6 +92,7 @@ if __name__ == "__main__":
             os.remove(f)
 
     csv = CSVGenerator()
+    # ToDo: try different face detector? https://github.com/1adrianb/face-alignment under "Detect the landmarks using a specific face detector"
     fa_v = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device='cuda:0', flip_input=True)
 
     print("Start facial landmark detection")

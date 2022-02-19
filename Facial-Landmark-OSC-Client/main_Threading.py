@@ -7,22 +7,28 @@ import cv2
 IMAGE_SIZE=512
 
 # Cam IDs
-camID_left_eye = "Testvideos/2020-08-20 23-12-02.mp4"
-camID_right_eye = "Testvideos/2020-08-20 23-11-07.mp4"
-camID_cnn = "CNN/2020-08-10 22-37-13.mp4"
+# camID_left_eye = "Testvideos/2020-08-20 23-12-02.mp4"
+# camID_right_eye = "Testvideos/2020-08-20 23-11-07.mp4"
+# camID_cnn = "CNN/2020-08-10 22-37-13.mp4"
+camID_left_eye = 0
+camID_right_eye = 1
+camID_cnn = 0
 
 # OSC Server (receive eye data "/faciallandmarks/eyes")
 osc_server_ip = "127.0.0.1"
 osc_server_port = 5005
+osc_server_port_lip_tracker_unity = 5006
 
 # OSC Client (send landmarks)
 osc_client_ip = "127.0.0.1"
 osc_client_port = 9000
 
 # CNN
-cnn_model_path = "CNN/14_model__bs=8_lr=0.001_dr=0_op=adam_Weitwinkel3_OhneLampe3.pth"
+useViveLipTrackerAndNotTheLFCNN = True
+cnn_model_path = "CNN/best_model__bs=8_lr=0.001_dr=0_BESSERERNAME.pth"
+# cnn_model_path = "CNN/14_model__bs=8_lr=0.001_dr=0_op=adam_Weitwinkel3_OhneLampe3.pth"
 cnn_params = dict(x=211,
-                  y=440,
+                  y=480,
                   scale=148,
                   brightness=92)
 
@@ -33,13 +39,23 @@ def thread_osc(threadname, _queue_eyes):
     from pythonosc.dispatcher import Dispatcher
     from pythonosc.osc_server import BlockingOSCUDPServer
 
+    # def eyebrown_handler(address, *args):
+    #    if not _queue_eyebrown.empty():
+    #        _queue_eyebrown.get()
+    #    _queue_eyebrown.put(args)
+
     def eyes_handler(address, *args):
         if not _queue_eyes.empty():
             _queue_eyes.get()
         _queue_eyes.put(args)
 
+    # def default_handler(address, *args):
+    #    print(f"DEFAULT {address}: {args}")
+
     dispatcher = Dispatcher()
+    # dispatcher.map("/faciallandmarks/eyebrows", eyebrown_handler)
     dispatcher.map("/faciallandmarks/eyes", eyes_handler)
+    # dispatcher.set_default_handler(default_handler)
 
     server = BlockingOSCUDPServer((osc_server_ip, osc_server_port), dispatcher)
     server.serve_forever()  # Blocks forever
@@ -64,7 +80,7 @@ def thread_eyebrow(threadname, _queue_eyebrown):
                      #Tracker("Tracker 6", 320, 50, 10, 200),
                      ]
     tracking_pipeline_left = TrackingPipeline("Left", 110, 50, 520, 200)
-    tracking_pipeline_right = TrackingPipeline("Right", 75, 0, 520, 200)
+    tracking_pipeline_right = TrackingPipeline("Right", 110, 50, 520, 200)
 
     timer = time.time()
 
@@ -118,90 +134,140 @@ def thread_hmc(threadname, _queue_hmc):
     def nothing():
         pass
 
-    import torch
-    import Utils.Camera as cam
-    from CNN.cnn import Net
+    if useViveLipTrackerAndNotTheLFCNN:
+        from pythonosc.dispatcher import Dispatcher
+        from pythonosc.osc_server import BlockingOSCUDPServer
 
-    height = int(260 / 1.5 * 0.9)  # int(206 * 0.9)
-    width = int(340 / 1.5 * 0.9)  # int(270 * 0.9)
+        # def eyebrown_handler(address, *args):
+        #    if not _queue_eyebrown.empty():
+        #        _queue_eyebrown.get()
+        #    _queue_eyebrown.put(args)
 
-    cv2.namedWindow('Window')
-    cv2.createTrackbar('X', 'Window', cnn_params["x"], 450, nothing)
-    cv2.createTrackbar('Y', 'Window', cnn_params["y"], 550, nothing)
-    cv2.createTrackbar('Scale', 'Window', cnn_params["scale"], 200, nothing)
-    cv2.createTrackbar('Brightness', 'Window', cnn_params["brightness"], 200, nothing)
+        def hmc_handler(address, *args):
+            if not _queue_hmc.empty():
+                _queue_hmc.get()
+            _queue_hmc.put(args)
 
-    cam = cam.Camera("Weitwinkel")
+        # def default_handler(address, *args):
+        #    print(f"DEFAULT {address}: {args}")
 
-    cap = cv2.VideoCapture(camID_cnn)  # (camID)  # 0 for webcam or path to video("Philipp_Grimaces.mp4") #
+        dispatcher = Dispatcher()
+        # dispatcher.map("/faciallandmarks/eyebrows", eyebrown_handler)
+        dispatcher.map("/dlibunity", hmc_handler)
+        # dispatcher.set_default_handler(default_handler)
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = Net(torch.zeros(1, 1, height, width), 0.1)
-    model.load_state_dict(torch.load(cnn_model_path))
-    model.to(device)
-    model.eval()
+        server = BlockingOSCUDPServer((osc_server_ip, osc_server_port_lip_tracker_unity), dispatcher)
+        server.serve_forever()  # Blocks forever
 
-    timer = 0
 
-    while (True):
-        _, frame = cap.read()
-        frame = cam(frame)
-        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        # old pipeline
+        import torch
+        import Utils.Camera as cam
+        from CNN.cnn import Net
 
-        # Region of interest
-        x = cv2.getTrackbarPos('X', 'Window')
-        y = cv2.getTrackbarPos('Y', 'Window')
-        scale = cv2.getTrackbarPos('Scale', 'Window')
-        brightness = cv2.getTrackbarPos('Brightness', 'Window')
+        height = int(260 / 1.5 * 0.9)  # int(206 * 0.9)
+        width = int(340 / 1.5 * 0.9)  # int(270 * 0.9)
 
-        x_min = int(x - width * scale / 200)
-        x_max = int(x + width * scale / 200)
-        y_min = int(y - height * scale / 200)
-        y_max = int(y + height * scale / 200)
+        cv2.namedWindow('Window')
+        cv2.createTrackbar('X', 'Window', cnn_params["x"], 450, nothing)
+        cv2.createTrackbar('Y', 'Window', cnn_params["y"], 550, nothing)
+        cv2.createTrackbar('Scale', 'Window', cnn_params["scale"], 200, nothing)
+        cv2.createTrackbar('Brightness', 'Window', cnn_params["brightness"], 200, nothing)
 
-        cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 0, 0))
+        cam = cam.Camera("Weitwinkel")
 
-        roi = frame[y_min:y_max, x_min:x_max]
-        roi = cv2.resize(roi, (width, height))
-        cv2.equalizeHist(roi, roi)
-        roi = (roi * (brightness / 100))
-        roi = np.clip(roi, 0, 255).astype("uint8")
+        cap = cv2.VideoCapture(camID_cnn)  # (camID)  # 0 for webcam or path to video("Philipp_Grimaces.mp4") #
 
-        # cv2.flip(roi, 1, roi)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model = Net(torch.zeros(1, 1, height, width), 0.1)
+        model.load_state_dict(torch.load(cnn_model_path))
+        model.to(device)
+        model.eval()
 
-        # CNN
-        input = torch.tensor(roi / 255, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
-        output = model(input.to(device))
+        timer = 0
+        times = []
+        firstRunDone = False
+        while (True):
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-        roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR)
+            _, frame = cap.read()
+            frame = cam(frame)
 
-        x_prev = int(output[0][0] * width)
-        y_prev = int(output[0][0 + 1] * height)
-        for i in range(2, len(output[0]), 2):
-            x = int(output[0][i] * width)
-            y = int(output[0][i + 1] * height)
-            # cv2.circle(frame, (x, y), 1, (255, 0, 0))
-            if i != 22 and i != 32:
-                cv2.line(roi, (x_prev, y_prev), (x, y), (0, 0, 255))
-            x_prev = x
-            y_prev = y
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        roi = cv2.resize(roi, (x_max - x_min, y_max - y_min))
-        frame[y_min:y_max, x_min:x_max] = roi
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # cv2.equalizeHist(frame, frame)
+            # frame = color_prosessing(frame)
 
-        cv2.imshow('Window', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            # Region of interest
+            x = cv2.getTrackbarPos('X', 'Window')
+            y = cv2.getTrackbarPos('Y', 'Window')
+            scale = cv2.getTrackbarPos('Scale', 'Window')
+            brightness = cv2.getTrackbarPos('Brightness', 'Window')
 
-        if not _queue_hmc.empty():
-            _queue_hmc.get()
-        _queue_hmc.put(output[0].cpu().detach().numpy().reshape(36, 2))
+            x_min = int(x - width * scale / 200)
+            x_max = int(x + width * scale / 200)
+            y_min = int(y - height * scale / 200)
+            y_max = int(y + height * scale / 200)
 
-        #print(time.time() - timer)
-        #timer = time.time()
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 0, 0))
+
+            roi = frame[y_min:y_max, x_min:x_max]
+            roi = cv2.resize(roi, (width, height))
+            cv2.equalizeHist(roi, roi)
+            roi = (roi * (brightness / 100))
+            roi = np.clip(roi, 0, 255).astype("uint8")
+
+            # cv2.flip(roi, 1, roi)
+
+            # CNN
+
+            input = torch.tensor(roi / 255, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            start = time.time()
+            # torch.cuda.synchronize(device)
+            output = model(input.to(device))
+
+            # torch.cuda.check_error(0)
+            torch.cuda.synchronize(device)
+            if not firstRunDone == False:
+                times.append(time.time() - start)
+            print(time.time() - start)
+            if not firstRunDone == False:
+                print("Summe: ")
+                print(sum(times))
+                print("len: ")
+                print(len(times))
+
+                print("Time avg: ", sum(times) / len(times))
+            firstRunDone = True
+            # print(time.time() - timer)
+            # timer = time.time()
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR)
+
+            x_prev = int(output[0][0] * width)
+            y_prev = int(output[0][0 + 1] * height)
+            for i in range(2, len(output[0]), 2):
+                x = int(output[0][i] * width)
+                y = int(output[0][i + 1] * height)
+                # cv2.circle(frame, (x, y), 1, (255, 0, 0))
+                if i != 22 and i != 32:
+                    cv2.line(roi, (x_prev, y_prev), (x, y), (0, 0, 255))
+                x_prev = x
+                y_prev = y
+
+            roi = cv2.resize(roi, (x_max - x_min, y_max - y_min))
+            frame[y_min:y_max, x_min:x_max] = roi
+
+            cv2.imshow('Window', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            if not _queue_hmc.empty():
+                _queue_hmc.get()
+            _queue_hmc.put(output[0].cpu().detach().numpy().reshape(36, 2))
 
 
 def thread_fan(threadname, _queue_fan):
@@ -296,7 +362,12 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
         # print("Fan:", data_fan)
         # print("HMC:", data_hmc)
         timer = time.time()
-        data_hmc = data_hmc * np.array([255, 127]) + np.array([0, 127])
+
+        if useViveLipTrackerAndNotTheLFCNN:
+            data_hmc_as_nparray = np.asarray(data_hmc)
+            data_hmc_as_nparray = np.reshape(data_hmc_as_nparray, (int(len(data_hmc) / 2), 2))
+        else:
+            data_hmc = data_hmc * np.array([255, 127]) + np.array([0, 127])
 
         # FAN
         #landmarks[0:68, :] = data_fan
@@ -341,15 +412,26 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
                                                            data_eyes[4] * range_eye_Y - range_eye_Y/2])
 
         # HMC
-        landmarks[0, :] = data_hmc[0] + np.array([0, -30])
-        landmarks[1, :] = data_hmc[0] + np.array([0, -20])
-        landmarks[2, :] = data_hmc[0] + np.array([0, -10])
-        landmarks[3:14, :] = data_hmc[0:11]
-        landmarks[14, :] = data_hmc[10] + np.array([0, -10])
-        landmarks[15, :] = data_hmc[10] + np.array([0, -20])
-        landmarks[16, :] = data_hmc[10] + np.array([0, -30])
-        landmarks[31:36, :] = data_hmc[11:16]
-        landmarks[48:68, :] = data_hmc[16:36]
+        if useViveLipTrackerAndNotTheLFCNN:
+            # print("data_hmc_as_nparray SHAPE:")
+            # print(data_hmc_as_nparray.shape)
+            # print("data_hmc_as_nparray SIZE:")
+            # print(data_hmc_as_nparray.size)
+            # print("data_hmc_as_nparray:")
+            # print(data_hmc_as_nparray)
+            landmarks[0:17, :] = data_hmc_as_nparray[0:17]
+            landmarks[31:36, :] = data_hmc_as_nparray[17:22]
+            landmarks[48:68, :] = data_hmc_as_nparray[22:42]
+        else:
+            landmarks[0, :] = data_hmc[0] + np.array([0, -30])
+            landmarks[1, :] = data_hmc[0] + np.array([0, -20])
+            landmarks[2, :] = data_hmc[0] + np.array([0, -10])
+            landmarks[3:14, :] = data_hmc[0:11]
+            landmarks[14, :] = data_hmc[10] + np.array([0, -10])
+            landmarks[15, :] = data_hmc[10] + np.array([0, -20])
+            landmarks[16, :] = data_hmc[10] + np.array([0, -30])
+            landmarks[31:36, :] = data_hmc[11:16]
+            landmarks[48:68, :] = data_hmc[16:36]
 
         # Nose
         landmarks[27, :] = np.array([127, 100 - 30])
@@ -357,8 +439,10 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
         landmarks[29, :] = np.array([127, 100 - 10])
         landmarks[30, :] = np.array([127, 100])
 
+
+
         if IMAGE_SIZE == 512:
-            landmarks *= 2
+            landmarks *= 1
         landmarks = flc(landmarks)
         print(time.time() - timer)
         osc_client.send_message("/landmarks", landmarks.reshape(-1).astype(int).tolist())
@@ -369,13 +453,13 @@ queue_eyebrown = Queue()
 queue_eyes = Queue()
 #queue_fan = Queue()
 queue_hmc = Queue()
-
-#thread1 = Thread(target=thread_osc, args=("Thread-OSC", queue_eyes))
+#thread1 = Thread(target=thread_dummy, args=("Thread-DummyEye", queue_eyes))
+thread1 = Thread(target=thread_osc, args=("Thread-OSC", queue_eyes))
 #thread2 = Thread( target=thread_fan, args=("Thread-FAN", queue_fan))
 thread2 = Thread(target=thread_hmc, args=("Thread-HMC", queue_hmc))
 thread3 = Thread(target=thread_main, args=("Thread-Main", queue_eyebrown, queue_eyes, queue_hmc))
 thread4 = Thread(target=thread_eyebrow, args=("Thread-Eyebrow", queue_eyebrown))
-thread1 = Thread(target=thread_dummy, args=("Thread-DummyEye", queue_eyes))
+
 
 thread1.start()
 thread2.start()
@@ -387,3 +471,4 @@ thread1.join()
 thread2.join()
 thread3.join()
 thread4.join()
+#thread5.join()
