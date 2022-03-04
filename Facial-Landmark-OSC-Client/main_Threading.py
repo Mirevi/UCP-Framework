@@ -10,8 +10,8 @@ IMAGE_SIZE=512
 # camID_left_eye = "Testvideos/2020-08-20 23-12-02.mp4"
 # camID_right_eye = "Testvideos/2020-08-20 23-11-07.mp4"
 # camID_cnn = "CNN/2020-08-10 22-37-13.mp4"
-camID_left_eye = 0
-camID_right_eye = 1
+camID_left_eye = 1
+camID_right_eye = 0
 camID_cnn = 0
 
 # OSC Server (receive eye data "/faciallandmarks/eyes")
@@ -31,6 +31,16 @@ cnn_params = dict(x=211,
                   y=480,
                   scale=148,
                   brightness=92)
+
+
+# checks which VideoCapture ID is available for easy setting up and find correct sensors
+def isCameraAvailable(source):
+   cap = cv2.VideoCapture(source)
+   if cap is None or not cap.isOpened():
+       print('Unable to open video source with ID ', source)
+   else:
+       print('Video source available with ID ', source)
+       cap.release()
 
 
 def thread_osc(threadname, _queue_eyes):
@@ -84,8 +94,23 @@ def thread_eyebrow(threadname, _queue_eyebrown):
 
     timer = time.time()
 
+    # Write eye brow images to disk part 1/2
+    # iteratorFileName = 0
+
+    # averaging the last 3 images in order to reduce flickering of the eye brow images for flicker reduction through time multiplexed LEDs part 1/2
+    frame_size = 480, 640, 3
+    last_frame_left = np.zeros(frame_size, dtype=np.uint8)
+    second_last_frame_left = np.zeros(frame_size, dtype=np.uint8)
+    last_frame_right = np.zeros(frame_size, dtype=np.uint8)
+    second_last_frame_right = np.zeros(frame_size, dtype=np.uint8)
+
     while video_left.isOpened() and video_right.isOpened():
         ret, frame_right = video_right.read()
+
+        # Write eye brow images to disk part 1/2
+        # cv2.imwrite("output/" + str(iteratorFileName) + ".jpg", frame_right)
+        # iteratorFileName = 1 + iteratorFileName
+
         if not ret:
             video_right.set(cv2.CAP_PROP_POS_FRAMES, 0)
             continue
@@ -96,8 +121,19 @@ def thread_eyebrow(threadname, _queue_eyebrown):
 
         frame_left = cv2.flip(frame_left, 1)
 
-        tracked_poses_left, frame_left = tracking_pipeline_left(frame_left, tracker_left)
-        tracked_poses_right, frame_right = tracking_pipeline_right(frame_right, tracker_right)
+        # averaging the last 3 images in order to reduce flickering of the eye brow images for flicker reduction through time multiplexed LEDs part 2/2
+        added_images_step1_left = cv2.addWeighted(frame_left, 0.5, last_frame_left, 0.5, 0)
+        added_images_step2_left = cv2.addWeighted(added_images_step1_left, 0.5, second_last_frame_left, 0.5, 0)
+        added_images_step1_right = cv2.addWeighted(frame_right, 0.5, last_frame_right, 0.5, 0)
+        added_images_step2_right = cv2.addWeighted(added_images_step1_right, 0.5, second_last_frame_right, 0.5, 0)
+
+        second_last_frame_left = last_frame_left
+        last_frame_left = frame_left
+        second_last_frame_right = last_frame_right
+        last_frame_right = frame_right
+
+        tracked_poses_left, frame_left_tracking_result = tracking_pipeline_left(added_images_step2_left, tracker_left)
+        tracked_poses_right, frame_right_tracking_result = tracking_pipeline_right(added_images_step2_right, tracker_right)
 
         tracked_poses = [0,  # tracked_poses_left[2],
                          tracked_poses_left[1],
@@ -114,14 +150,15 @@ def thread_eyebrow(threadname, _queue_eyebrown):
         # hist = cv2.calcHist([frame],[0],None,[256],[0,256])
         # cv2.imshow("hist", hist)
 
-        frame_left = cv2.flip(frame_left, 1)
+        frame_left_tracking_result = cv2.flip(frame_left_tracking_result, 1)
 
-        cv2.imshow(threadname, np.concatenate((frame_left, frame_right), axis=1))
+        cv2.imshow(threadname, np.concatenate((frame_left_tracking_result, frame_right_tracking_result), axis=1))
         if cv2.waitKey(1) == ord('q'):
             break
 
         #print(time.time() - timer)
         timer = time.time()
+
 
     video_left.release()
     video_right.release()
@@ -375,6 +412,9 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
         # Eyebrown
         data_eyebrown = list(map(lambda y: y/5 + 15, data_eyebrown))
 
+        eyebrow_factor = 2.2
+        data_eyebrown = [element * 2 for element in data_eyebrown]
+
         landmarks[17, :] = np.array([45, data_eyebrown[2]])
         landmarks[18, :] = np.array([55, (2 * data_eyebrown[2] + data_eyebrown[1]) / 3])
         landmarks[19, :] = np.array([65, (data_eyebrown[2] + 2 * data_eyebrown[1]) / 3])
@@ -388,28 +428,42 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
         landmarks[26, :] = np.array([210, data_eyebrown[3]])
 
         # Eyes
-
+        eye_openess_factor_right = 7
+        eye_openess_factor_left = 7
+        eye_openess_offset_right = 3
+        eye_openess_offset_left = 3
+        # Left eye
         landmarks[36, :] = np.array([50, 60])
-        landmarks[37, :] = np.array([60, 56]) + np.array([0, -3]) * data_eyes[2]
-        landmarks[38, :] = np.array([80, 56]) + np.array([0, -3]) * data_eyes[2]
+        landmarks[37, :] = np.array([60, 56]) + np.array([0, -eye_openess_factor_left]) * data_eyes[2] - eye_openess_offset_left
+        landmarks[38, :] = np.array([80, 56]) + np.array([0, -eye_openess_factor_left]) * data_eyes[2] - eye_openess_offset_left
         landmarks[39, :] = np.array([90, 60])
-        landmarks[40, :] = np.array([80, 64]) + np.array([0, 3]) * data_eyes[2]
-        landmarks[41, :] = np.array([60, 64]) + np.array([0, 3]) * data_eyes[2]
+        landmarks[40, :] = np.array([80, 64]) + np.array([0, eye_openess_factor_left]) * data_eyes[2] + eye_openess_offset_left
+        landmarks[41, :] = np.array([60, 64]) + np.array([0, eye_openess_factor_left]) * data_eyes[2] + eye_openess_offset_left
 
-        range_eye_X = 20
-        range_eye_Y = 10
-        landmarks[68, :] = np.array([70, 60]) + np.array([data_eyes[0] * range_eye_X - range_eye_X/2,
-                                                          data_eyes[1] * range_eye_Y - range_eye_Y/2])
-
+        # Right eye
         landmarks[42, :] = np.array([165, 60])
-        landmarks[43, :] = np.array([175, 56]) + np.array([0, -3]) * data_eyes[5]
-        landmarks[44, :] = np.array([195, 56]) + np.array([0, -3]) * data_eyes[5]
+        landmarks[43, :] = np.array([175, 56]) + np.array([0, -eye_openess_factor_right]) * data_eyes[5] - eye_openess_offset_right
+        landmarks[44, :] = np.array([195, 56]) + np.array([0, -eye_openess_factor_right]) * data_eyes[5] - eye_openess_offset_right
         landmarks[45, :] = np.array([205, 60])
-        landmarks[46, :] = np.array([195, 64]) + np.array([0, 3]) * data_eyes[5]
-        landmarks[47, :] = np.array([175, 64]) + np.array([0, 3]) * data_eyes[5]
+        landmarks[46, :] = np.array([195, 64]) + np.array([0, eye_openess_factor_right]) * data_eyes[5] + eye_openess_offset_right
+        landmarks[47, :] = np.array([175, 64]) + np.array([0, eye_openess_factor_right]) * data_eyes[5] + eye_openess_offset_right
 
+
+        # print("data_eyes")
+        # print(data_eyes)
+
+        # Pupils
+        range_eye_X = 22
+        range_eye_Y = 17
+        landmarks[68, :] = np.array([70, 60]) + np.array([data_eyes[0] * range_eye_X - range_eye_X/2,
+                                                          -data_eyes[1] * range_eye_Y - range_eye_Y/2])
         landmarks[69, :] = np.array([185, 60]) + np.array([data_eyes[3] * range_eye_X - range_eye_X/2,
-                                                           data_eyes[4] * range_eye_Y - range_eye_Y/2])
+                                                           -data_eyes[4] * range_eye_Y - range_eye_Y/2])
+
+        print("Abstand X Augen:")
+        print(landmarks[68,0] - landmarks[69,0])
+        print("____")
+
 
         # HMC
         if useViveLipTrackerAndNotTheLFCNN:
@@ -448,6 +502,9 @@ def thread_main(threadname, _queue_eyebrown, _queue_eyes, _queue_hmc):
         osc_client.send_message("/landmarks", landmarks.reshape(-1).astype(int).tolist())
 
 
+# checks which VideoCapture ID is available for easy setting up and find correct sensors
+for x in  range(0, 5):
+    isCameraAvailable(x)
 
 queue_eyebrown = Queue()
 queue_eyes = Queue()

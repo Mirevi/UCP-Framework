@@ -1,8 +1,8 @@
-import numpy as np
 import cv2
 import cv2 as cv
-import math
+import numpy as np
 from pythonosc import udp_client
+from Filtering import OneEuroFilter
 
 def nothing(x):
     pass
@@ -84,6 +84,16 @@ class Tracker:
         self.h = h
         self.w = w
 
+        # Using 1€ filter
+        self.time_iterator = 1
+        min_cutoff = 0.004
+        beta = 0.007
+        self.oneEuroFilter = OneEuroFilter(
+            self.time_iterator, 0,
+            min_cutoff=min_cutoff,
+            beta=beta
+        )
+
     def __call__(self, frame_eyebrown, frame = None, offset_x=0, offset_y=0):
         cv2.rectangle(frame_eyebrown, (self.x, self.y), (self.x + self.w, self.y + self.h), (127, 127, 127))
         frame_eyebrown_tracking = frame_eyebrown[self.y:self.y + self.h, self.x:self.x + self.w]
@@ -96,9 +106,14 @@ class Tracker:
             tracked_y = 135
 
         tracked_y += self.y
+
+        self.time_iterator = 1 + self.time_iterator
+        tracked_y = self.oneEuroFilter(self.time_iterator, tracked_y)
+        tracked_y = round(tracked_y)
+
         #tracked_y = int(np.argmax(frame_eyebrown_tracking) / self.w) + self.y
         frame_eyebrown[tracked_y:tracked_y + self.w, self.x:self.x + self.w] = 127
-        frame[tracked_y+offset_y:tracked_y+offset_y + self.w, self.x+offset_x:self.x+offset_x + self.w] = (0, 0, 255)
+        frame[tracked_y + offset_y:tracked_y + offset_y + self.w, self.x + offset_x:self.x + offset_x + self.w] = (0, 0, 255)
 
         return tracked_y, frame_eyebrown, frame
 
@@ -111,10 +126,11 @@ class TrackingPipeline:
         self.window_name = name
         cv2.namedWindow(self.window_name)
 
-        cv2.createTrackbar('Blur', self.window_name, 6, 255, nothing) #33
+        cv2.createTrackbar('Blur', self.window_name, 0, 255, nothing) #33
         self.blocksize = lambda i: 3 + i * 2
         cv2.createTrackbar('Brightness', self.window_name, 0, 255, nothing) #255 # 22
-        cv2.createTrackbar('Threshold', self.window_name, 140, 255, nothing)  #170# 165
+        cv2.createTrackbar('Threshold', self.window_name, 165, 255, nothing)  #170# 165
+
 
     def __call__(self, frame, tracker):
         # ROI - Eyebrown
